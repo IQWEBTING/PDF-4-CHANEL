@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4f46e5">
+    <title>PDF A4 to A6 - PWA</title>
+    
+    <!-- PWA Manifest (Inline Data URI for single file) -->
+    <link rel="manifest" id="pwa-manifest">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap');
+        body { font-family: 'Kanit', sans-serif; }
+        .drop-zone { border: 2px dashed #cbd5e1; transition: all 0.3s ease; }
+        .drop-zone.active { border-color: #4f46e5; background-color: #eef2ff; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100">
+        <!-- Header -->
+        <div class="bg-indigo-600 p-6 text-white text-center">
+            <h1 class="text-2xl font-bold mb-1">PDF A4 to A6 PWA</h1>
+            <p class="opacity-90 text-sm">รวม 4 หน้าลง 1 แผ่น - ติดตั้งลงเครื่องได้เลย!</p>
+        </div>
+
+        <!-- Install Prompt (Hidden by default) -->
+        <div id="installBanner" class="hidden bg-indigo-50 p-4 border-b border-indigo-100 flex items-center justify-between">
+            <span class="text-indigo-800 text-sm font-medium">ติดตั้งแอปนี้ลงในเครื่องเพื่อใช้งานได้สะดวกขึ้น?</span>
+            <button id="installBtn" class="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-indigo-700">ติดตั้ง</button>
+        </div>
+
+        <div class="p-6 md:p-8">
+            <!-- Drop Zone -->
+            <div id="dropZone" class="drop-zone rounded-2xl p-8 md:p-12 text-center cursor-pointer mb-6 bg-slate-50">
+                <div class="flex flex-col items-center">
+                    <div class="bg-indigo-100 p-4 rounded-full mb-4 text-indigo-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                    </div>
+                    <p class="text-lg font-bold text-slate-700">ลากไฟล์ PDF มาวางตรงนี้</p>
+                    <p class="text-sm text-slate-500 mt-1">หรือคลิกเพื่อเลือกไฟล์จากเครื่อง</p>
+                </div>
+                <input type="file" id="fileInput" class="hidden" accept="application/pdf" multiple>
+            </div>
+
+            <!-- File List -->
+            <div id="fileListContainer" class="hidden mb-6">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-bold text-slate-700">ไฟล์ที่เลือกไว้:</h3>
+                    <button id="clearAll" class="text-xs text-red-500 hover:text-red-700 font-bold uppercase tracking-wider">ล้างทั้งหมด</button>
+                </div>
+                <ul id="fileList" class="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar"></ul>
+            </div>
+
+            <!-- Actions -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button id="downloadBtn" disabled class="group flex items-center justify-center gap-3 py-4 bg-indigo-600 text-white rounded-xl font-bold text-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-all shadow-lg active:scale-95">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    ดาวน์โหลด
+                </button>
+                
+                <button id="printBtn" disabled class="group flex items-center justify-center gap-3 py-4 bg-emerald-600 text-white rounded-xl font-bold text-lg hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-all shadow-lg active:scale-95">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    พิมพ์ทันที
+                </button>
+            </div>
+
+            <div id="status" class="mt-6 text-center hidden">
+                <div class="inline-flex items-center text-indigo-600 font-bold bg-indigo-50 px-6 py-2 rounded-full animate-pulse">
+                    กำลังประมวลผล...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- PWA SETUP ---
+        const manifest = {
+            "name": "PDF Merger A4 to A6",
+            "short_name": "PDFMerger",
+            "start_url": ".",
+            "display": "standalone",
+            "background_color": "#ffffff",
+            "theme_color": "#4f46e5",
+            "icons": [
+                { "src": "https://cdn-icons-png.flaticon.com/512/337/337946.png", "sizes": "512x512", "type": "image/png" }
+            ]
+        };
+        const manifestStr = JSON.stringify(manifest);
+        const manifestBlob = new Blob([manifestStr], {type: 'application/json'});
+        document.getElementById('pwa-manifest').setAttribute('href', URL.createObjectURL(manifestBlob));
+
+        // Service Worker (Dummy for PWA criteria)
+        if ('serviceWorker' in navigator) {
+            const swCode = `self.addEventListener('fetch', function(event) {});`;
+            const swBlob = new Blob([swCode], {type: 'text/javascript'});
+            const swUrl = URL.createObjectURL(swBlob);
+            navigator.serviceWorker.register(swUrl);
+        }
+
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installBanner').classList.remove('hidden');
+        });
+
+        document.getElementById('installBtn').onclick = async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') document.getElementById('installBanner').classList.add('hidden');
+                deferredPrompt = null;
+            }
+        };
+
+        // --- PDF LOGIC ---
+        const { PDFDocument } = PDFLib;
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const fileListContainer = document.getElementById('fileListContainer');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const printBtn = document.getElementById('printBtn');
+        const status = document.getElementById('status');
+        const clearBtn = document.getElementById('clearAll');
+
+        let selectedFiles = [];
+
+        const updateUI = () => {
+            fileList.innerHTML = '';
+            if (selectedFiles.length > 0) {
+                fileListContainer.classList.remove('hidden');
+                downloadBtn.disabled = printBtn.disabled = false;
+                selectedFiles.forEach((file, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-sm';
+                    li.innerHTML = `<span class="truncate font-medium text-slate-600">${file.name}</span>
+                        <button onclick="removeFile(${index})" class="text-red-400 hover:text-red-600">
+                            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/></svg>
+                        </button>`;
+                    fileList.appendChild(li);
+                });
+            } else {
+                fileListContainer.classList.add('hidden');
+                downloadBtn.disabled = printBtn.disabled = true;
+            }
+        };
+
+        window.removeFile = (i) => { selectedFiles.splice(i, 1); updateUI(); };
+        clearBtn.onclick = () => { selectedFiles = []; updateUI(); };
+        dropZone.onclick = () => fileInput.click();
+        fileInput.onchange = (e) => { 
+            selectedFiles = [...selectedFiles, ...Array.from(e.target.files).filter(f => f.type === 'application/pdf')];
+            updateUI(); 
+            fileInput.value = ''; 
+        };
+
+        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('active'); };
+        dropZone.ondragleave = () => dropZone.classList.remove('active');
+        dropZone.ondrop = (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('active');
+            selectedFiles = [...selectedFiles, ...Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf')];
+            updateUI();
+        };
+
+        async function processPDF() {
+            status.classList.remove('hidden');
+            try {
+                const outPdf = await PDFDocument.create();
+                let allPages = [];
+                for (const f of selectedFiles) {
+                    const doc = await PDFDocument.load(await f.arrayBuffer());
+                    const copied = await outPdf.copyPages(doc, doc.getPageIndices());
+                    allPages = allPages.concat(copied);
+                }
+
+                for (let i = 0; i < allPages.length; i += 4) {
+                    const page = outPdf.addPage([595.28, 841.89]);
+                    const { width, height } = page.getSize();
+                    const qW = width/2, qH = height/2;
+                    const pos = [[0, qH], [qW, qH], [0, 0], [qW, 0]];
+                    for (let j=0; j<4; j++) {
+                        if (allPages[i+j]) {
+                            const emb = await outPdf.embedPage(allPages[i+j]);
+                            const { width: pW, height: pH } = allPages[i+j].getSize();
+                            const sc = Math.min(qW/pW, qH/pH);
+                            page.drawPage(emb, { x: pos[j][0]+(qW-pW*sc)/2, y: pos[j][1]+(qH-pH*sc)/2, width: pW*sc, height: pH*sc });
+                        }
+                    }
+                }
+                return new Blob([await outPdf.save()], { type: 'application/pdf' });
+            } catch (err) { alert(err.message); return null; }
+            finally { status.classList.add('hidden'); }
+        }
+
+        downloadBtn.onclick = async () => {
+            const b = await processPDF();
+            if (!b) return;
+            const u = URL.createObjectURL(b), a = document.createElement('a');
+            a.href = u; a.download = 'merged.pdf'; a.click();
+        };
+
+        printBtn.onclick = async () => {
+            const b = await processPDF();
+            if (!b) return;
+            const u = URL.createObjectURL(b), w = window.open(u);
+            if (w) w.onload = () => w.print();
+            else alert('เปิดหน้าต่างสั่งพิมพ์ไม่ได้ โปรดอนุญาต Pop-up');
+        };
+    </script>
+</body>
+</html>
+
