@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#4f46e5">
-    <title>PDF A4 to A6 - PWA</title>
+    <title>PDF A4 to A6 - Adjustable Margin</title>
     
-    <!-- PWA Manifest (Inline Data URI for single file) -->
     <link rel="manifest" id="pwa-manifest">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -16,7 +15,6 @@
         body { font-family: 'Kanit', sans-serif; }
         .drop-zone { border: 2px dashed #cbd5e1; transition: all 0.3s ease; }
         .drop-zone.active { border-color: #4f46e5; background-color: #eef2ff; }
-        /* Custom scrollbar for file list */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -27,27 +25,40 @@
     <div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100">
         <!-- Header -->
         <div class="bg-indigo-600 p-6 text-white text-center">
-            <h1 class="text-2xl font-bold mb-1">PDF A4 to A6 PWA</h1>
-            <p class="opacity-90 text-sm">รวม 4 หน้าลง 1 แผ่น (เว้นขอบ 1 ซม.) - ติดตั้งลงเครื่องได้!</p>
+            <h1 class="text-2xl font-bold mb-1">PDF A4 to A6 (4-in-1)</h1>
+            <p class="opacity-90 text-sm">รวมไฟล์พร้อมปรับระยะขอบได้ตามใจชอบ</p>
         </div>
 
-        <!-- Install Prompt (Hidden by default) -->
         <div id="installBanner" class="hidden bg-indigo-50 p-4 border-b border-indigo-100 flex items-center justify-between">
-            <span class="text-indigo-800 text-sm font-medium">ติดตั้งแอปนี้ลงในเครื่องเพื่อใช้งานได้สะดวกขึ้น?</span>
+            <span class="text-indigo-800 text-sm font-medium">ติดตั้งแอปนี้ลงในเครื่อง?</span>
             <button id="installBtn" class="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-indigo-700">ติดตั้ง</button>
         </div>
 
         <div class="p-6 md:p-8">
+            <!-- Margin Slider -->
+            <div class="mb-8 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div class="flex justify-between items-center mb-2">
+                    <label for="marginRange" class="font-bold text-slate-700">ระยะเว้นขอบ (Margin):</label>
+                    <span class="bg-indigo-600 text-white px-3 py-1 rounded-full text-sm font-bold" id="marginDisplay">0.5 ซม.</span>
+                </div>
+                <input type="range" id="marginRange" min="0" max="2" step="0.1" value="0.5" class="w-full h-2 bg-indigo-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                <div class="flex justify-between text-xs text-slate-400 mt-2">
+                    <span>0 ซม. (ชิดขอบ)</span>
+                    <span>1 ซม.</span>
+                    <span>2 ซม.</span>
+                </div>
+            </div>
+
             <!-- Drop Zone -->
-            <div id="dropZone" class="drop-zone rounded-2xl p-8 md:p-12 text-center cursor-pointer mb-6 bg-slate-50">
+            <div id="dropZone" class="drop-zone rounded-2xl p-8 text-center cursor-pointer mb-6 bg-slate-50">
                 <div class="flex flex-col items-center">
                     <div class="bg-indigo-100 p-4 rounded-full mb-4 text-indigo-600">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
                     </div>
-                    <p class="text-lg font-bold text-slate-700">ลากไฟล์ PDF มาวางตรงนี้</p>
-                    <p class="text-sm text-slate-500 mt-1">หรือคลิกเพื่อเลือกไฟล์จากเครื่อง</p>
+                    <p class="text-lg font-bold text-slate-700">ลากไฟล์ PDF มาวาง</p>
+                    <p class="text-sm text-slate-500 mt-1">หรือคลิกเพื่อเลือกไฟล์</p>
                 </div>
                 <input type="file" id="fileInput" class="hidden" accept="application/pdf" multiple>
             </div>
@@ -56,7 +67,7 @@
             <div id="fileListContainer" class="hidden mb-6">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="font-bold text-slate-700">ไฟล์ที่เลือกไว้:</h3>
-                    <button id="clearAll" class="text-xs text-red-500 hover:text-red-700 font-bold uppercase tracking-wider">ล้างทั้งหมด</button>
+                    <button id="clearAll" class="text-xs text-red-500 hover:text-red-700 font-bold uppercase">ล้างทั้งหมด</button>
                 </div>
                 <ul id="fileList" class="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar"></ul>
             </div>
@@ -80,7 +91,7 @@
 
             <div id="status" class="mt-6 text-center hidden">
                 <div class="inline-flex items-center text-indigo-600 font-bold bg-indigo-50 px-6 py-2 rounded-full animate-pulse">
-                    กำลังประมวลผล...
+                    กำลังจัดหน้า PDF...
                 </div>
             </div>
         </div>
@@ -104,18 +115,13 @@
             const manifestBlob = new Blob([manifestStr], {type: 'application/json'});
             document.getElementById('pwa-manifest').setAttribute('href', URL.createObjectURL(manifestBlob));
 
-            // Service Worker Registration with Security Check
-            // Check if protocol is standard web (http/https) to avoid Blob URL registration error
             if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
                 const swCode = `self.addEventListener('fetch', function(event) {});`;
                 const swBlob = new Blob([swCode], {type: 'text/javascript'});
                 const swUrl = URL.createObjectURL(swBlob);
-                navigator.serviceWorker.register(swUrl).catch(err => {
-                    console.warn('Service Worker registration skipped or failed:', err);
-                });
+                navigator.serviceWorker.register(swUrl).catch(err => console.warn('SW registration skipped:', err));
             }
         };
-        
         setupPWA();
 
         let deferredPrompt;
@@ -132,6 +138,13 @@
                 if (outcome === 'accepted') document.getElementById('installBanner').classList.add('hidden');
                 deferredPrompt = null;
             }
+        };
+
+        // --- MARGIN CONTROLLER ---
+        const marginRange = document.getElementById('marginRange');
+        const marginDisplay = document.getElementById('marginDisplay');
+        marginRange.oninput = (e) => {
+            marginDisplay.innerText = `${e.target.value} ซม.`;
         };
 
         // --- PDF LOGIC ---
@@ -196,8 +209,8 @@
                     allPages = allPages.concat(copied);
                 }
 
-                // ระยะเว้นขอบ 1 ซม. = 28.35 points
-                const margin = 28.35;
+                // แปลงหน่วย ซม. เป็น points (1 cm = 28.3465 points)
+                const margin = parseFloat(marginRange.value) * 28.3465;
 
                 for (let i = 0; i < allPages.length; i += 4) {
                     const page = outPdf.addPage([595.28, 841.89]); // A4
@@ -205,9 +218,7 @@
                     const qW = width / 2;
                     const qH = height / 2;
 
-                    const pos = [
-                        [0, qH], [qW, qH], [0, 0], [qW, 0]
-                    ];
+                    const pos = [[0, qH], [qW, qH], [0, 0], [qW, 0]];
 
                     for (let j = 0; j < 4; j++) {
                         if (allPages[i + j]) {
@@ -218,11 +229,15 @@
                             const innerW = qW - (margin * 2);
                             const innerH = qH - (margin * 2);
 
-                            const sc = Math.min(innerW / pW, innerH / pH);
+                            // ป้องกันกรณี margin มากเกินไปจนพื้นที่ติดลบ
+                            const finalInnerW = Math.max(1, innerW);
+                            const finalInnerH = Math.max(1, innerH);
+
+                            const sc = Math.min(finalInnerW / pW, finalInnerH / pH);
                             
                             page.drawPage(emb, { 
-                                x: pos[j][0] + margin + (innerW - pW * sc) / 2, 
-                                y: pos[j][1] + margin + (innerH - pH * sc) / 2, 
+                                x: pos[j][0] + margin + (finalInnerW - pW * sc) / 2, 
+                                y: pos[j][1] + margin + (finalInnerH - pH * sc) / 2, 
                                 width: pW * sc, 
                                 height: pH * sc 
                             });
@@ -233,15 +248,14 @@
             } catch (err) { 
                 alert(err.message); 
                 return null; 
-            }
-            finally { status.classList.add('hidden'); }
+            } finally { status.classList.add('hidden'); }
         }
 
         downloadBtn.onclick = async () => {
             const b = await processPDF();
             if (!b) return;
             const u = URL.createObjectURL(b), a = document.createElement('a');
-            a.href = u; a.download = 'merged_with_margin.pdf'; a.click();
+            a.href = u; a.download = 'merged_adjustable.pdf'; a.click();
         };
 
         printBtn.onclick = async () => {
@@ -249,9 +263,8 @@
             if (!b) return;
             const u = URL.createObjectURL(b), w = window.open(u);
             if (w) w.onload = () => w.print();
-            else alert('เปิดหน้าต่างสั่งพิมพ์ไม่ได้ โปรดอนุญาต Pop-up');
+            else alert('เปิด Pop-up ไม่ได้ โปรดอนุญาตก่อนนะไอคิว');
         };
     </script>
 </body>
 </html>
-
