@@ -16,6 +16,10 @@
         body { font-family: 'Kanit', sans-serif; }
         .drop-zone { border: 2px dashed #cbd5e1; transition: all 0.3s ease; }
         .drop-zone.active { border-color: #4f46e5; background-color: #eef2ff; }
+        /* Custom scrollbar for file list */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen p-4 md:p-8">
@@ -24,7 +28,7 @@
         <!-- Header -->
         <div class="bg-indigo-600 p-6 text-white text-center">
             <h1 class="text-2xl font-bold mb-1">PDF A4 to A6 PWA</h1>
-            <p class="opacity-90 text-sm">รวม 4 หน้าลง 1 แผ่น - ติดตั้งลงเครื่องได้เลย!</p>
+            <p class="opacity-90 text-sm">รวม 4 หน้าลง 1 แผ่น (เว้นขอบ 1 ซม.) - ติดตั้งลงเครื่องได้!</p>
         </div>
 
         <!-- Install Prompt (Hidden by default) -->
@@ -84,28 +88,35 @@
 
     <script>
         // --- PWA SETUP ---
-        const manifest = {
-            "name": "PDF Merger A4 to A6",
-            "short_name": "PDFMerger",
-            "start_url": ".",
-            "display": "standalone",
-            "background_color": "#ffffff",
-            "theme_color": "#4f46e5",
-            "icons": [
-                { "src": "https://cdn-icons-png.flaticon.com/512/337/337946.png", "sizes": "512x512", "type": "image/png" }
-            ]
-        };
-        const manifestStr = JSON.stringify(manifest);
-        const manifestBlob = new Blob([manifestStr], {type: 'application/json'});
-        document.getElementById('pwa-manifest').setAttribute('href', URL.createObjectURL(manifestBlob));
+        const setupPWA = () => {
+            const manifest = {
+                "name": "PDF Merger A4 to A6",
+                "short_name": "PDFMerger",
+                "start_url": ".",
+                "display": "standalone",
+                "background_color": "#ffffff",
+                "theme_color": "#4f46e5",
+                "icons": [
+                    { "src": "https://cdn-icons-png.flaticon.com/512/337/337946.png", "sizes": "512x512", "type": "image/png" }
+                ]
+            };
+            const manifestStr = JSON.stringify(manifest);
+            const manifestBlob = new Blob([manifestStr], {type: 'application/json'});
+            document.getElementById('pwa-manifest').setAttribute('href', URL.createObjectURL(manifestBlob));
 
-        // Service Worker (Dummy for PWA criteria)
-        if ('serviceWorker' in navigator) {
-            const swCode = `self.addEventListener('fetch', function(event) {});`;
-            const swBlob = new Blob([swCode], {type: 'text/javascript'});
-            const swUrl = URL.createObjectURL(swBlob);
-            navigator.serviceWorker.register(swUrl);
-        }
+            // Service Worker Registration with Security Check
+            // Check if protocol is standard web (http/https) to avoid Blob URL registration error
+            if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
+                const swCode = `self.addEventListener('fetch', function(event) {});`;
+                const swBlob = new Blob([swCode], {type: 'text/javascript'});
+                const swUrl = URL.createObjectURL(swBlob);
+                navigator.serviceWorker.register(swUrl).catch(err => {
+                    console.warn('Service Worker registration skipped or failed:', err);
+                });
+            }
+        };
+        
+        setupPWA();
 
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -185,22 +196,44 @@
                     allPages = allPages.concat(copied);
                 }
 
+                // ระยะเว้นขอบ 1 ซม. = 28.35 points
+                const margin = 28.35;
+
                 for (let i = 0; i < allPages.length; i += 4) {
-                    const page = outPdf.addPage([595.28, 841.89]);
+                    const page = outPdf.addPage([595.28, 841.89]); // A4
                     const { width, height } = page.getSize();
-                    const qW = width/2, qH = height/2;
-                    const pos = [[0, qH], [qW, qH], [0, 0], [qW, 0]];
-                    for (let j=0; j<4; j++) {
-                        if (allPages[i+j]) {
-                            const emb = await outPdf.embedPage(allPages[i+j]);
-                            const { width: pW, height: pH } = allPages[i+j].getSize();
-                            const sc = Math.min(qW/pW, qH/pH);
-                            page.drawPage(emb, { x: pos[j][0]+(qW-pW*sc)/2, y: pos[j][1]+(qH-pH*sc)/2, width: pW*sc, height: pH*sc });
+                    const qW = width / 2;
+                    const qH = height / 2;
+
+                    const pos = [
+                        [0, qH], [qW, qH], [0, 0], [qW, 0]
+                    ];
+
+                    for (let j = 0; j < 4; j++) {
+                        if (allPages[i + j]) {
+                            const srcPage = allPages[i + j];
+                            const emb = await outPdf.embedPage(srcPage);
+                            const { width: pW, height: pH } = srcPage.getSize();
+
+                            const innerW = qW - (margin * 2);
+                            const innerH = qH - (margin * 2);
+
+                            const sc = Math.min(innerW / pW, innerH / pH);
+                            
+                            page.drawPage(emb, { 
+                                x: pos[j][0] + margin + (innerW - pW * sc) / 2, 
+                                y: pos[j][1] + margin + (innerH - pH * sc) / 2, 
+                                width: pW * sc, 
+                                height: pH * sc 
+                            });
                         }
                     }
                 }
                 return new Blob([await outPdf.save()], { type: 'application/pdf' });
-            } catch (err) { alert(err.message); return null; }
+            } catch (err) { 
+                alert(err.message); 
+                return null; 
+            }
             finally { status.classList.add('hidden'); }
         }
 
@@ -208,7 +241,7 @@
             const b = await processPDF();
             if (!b) return;
             const u = URL.createObjectURL(b), a = document.createElement('a');
-            a.href = u; a.download = 'merged.pdf'; a.click();
+            a.href = u; a.download = 'merged_with_margin.pdf'; a.click();
         };
 
         printBtn.onclick = async () => {
