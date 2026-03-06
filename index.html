@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#4f46e5">
-    <title>PDF A4 to A6 - Adjustable Margin</title>
+    <title>PDF A4 to A6 - Fixed 0.1cm Margin</title>
     
     <link rel="manifest" id="pwa-manifest">
     
@@ -26,7 +26,7 @@
         <!-- Header -->
         <div class="bg-indigo-600 p-6 text-white text-center">
             <h1 class="text-2xl font-bold mb-1">PDF A4 to A6 (4-in-1)</h1>
-            <p class="opacity-90 text-sm">รวมไฟล์พร้อมปรับระยะขอบได้ตามใจชอบ</p>
+            <p class="opacity-90 text-sm">รวมไฟล์อัตโนมัติ (Fix ขอบ 0.1 ซม.)</p>
         </div>
 
         <div id="installBanner" class="hidden bg-indigo-50 p-4 border-b border-indigo-100 flex items-center justify-between">
@@ -35,18 +35,9 @@
         </div>
 
         <div class="p-6 md:p-8">
-            <!-- Margin Slider -->
-            <div class="mb-8 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <div class="flex justify-between items-center mb-2">
-                    <label for="marginRange" class="font-bold text-slate-700">ระยะเว้นขอบ (Margin):</label>
-                    <span class="bg-indigo-600 text-white px-3 py-1 rounded-full text-sm font-bold" id="marginDisplay">0.5 ซม.</span>
-                </div>
-                <input type="range" id="marginRange" min="0" max="2" step="0.1" value="0.5" class="w-full h-2 bg-indigo-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
-                <div class="flex justify-between text-xs text-slate-400 mt-2">
-                    <span>0 ซม. (ชิดขอบ)</span>
-                    <span>1 ซม.</span>
-                    <span>2 ซม.</span>
-                </div>
+            <!-- Fixed Margin Info -->
+            <div class="mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100 text-center">
+                <span class="text-indigo-700 font-semibold">ตั้งค่าระยะขอบไว้ที่: 0.1 ซม. (Fixed)</span>
             </div>
 
             <!-- Drop Zone -->
@@ -140,13 +131,6 @@
             }
         };
 
-        // --- MARGIN CONTROLLER ---
-        const marginRange = document.getElementById('marginRange');
-        const marginDisplay = document.getElementById('marginDisplay');
-        marginRange.oninput = (e) => {
-            marginDisplay.innerText = `${e.target.value} ซม.`;
-        };
-
         // --- PDF LOGIC ---
         const { PDFDocument } = PDFLib;
         const dropZone = document.getElementById('dropZone');
@@ -209,8 +193,8 @@
                     allPages = allPages.concat(copied);
                 }
 
-                // แปลงหน่วย ซม. เป็น points (1 cm = 28.3465 points)
-                const margin = parseFloat(marginRange.value) * 28.3465;
+                // ระยะเว้นขอบคงที่ 0.1 ซม. = 2.83465 points
+                const margin = 0.1 * 28.3465;
 
                 for (let i = 0; i < allPages.length; i += 4) {
                     const page = outPdf.addPage([595.28, 841.89]); // A4
@@ -229,15 +213,11 @@
                             const innerW = qW - (margin * 2);
                             const innerH = qH - (margin * 2);
 
-                            // ป้องกันกรณี margin มากเกินไปจนพื้นที่ติดลบ
-                            const finalInnerW = Math.max(1, innerW);
-                            const finalInnerH = Math.max(1, innerH);
-
-                            const sc = Math.min(finalInnerW / pW, finalInnerH / pH);
+                            const sc = Math.min(innerW / pW, innerH / pH);
                             
                             page.drawPage(emb, { 
-                                x: pos[j][0] + margin + (finalInnerW - pW * sc) / 2, 
-                                y: pos[j][1] + margin + (finalInnerH - pH * sc) / 2, 
+                                x: pos[j][0] + margin + (innerW - pW * sc) / 2, 
+                                y: pos[j][1] + margin + (innerH - pH * sc) / 2, 
                                 width: pW * sc, 
                                 height: pH * sc 
                             });
@@ -255,7 +235,7 @@
             const b = await processPDF();
             if (!b) return;
             const u = URL.createObjectURL(b), a = document.createElement('a');
-            a.href = u; a.download = 'merged_adjustable.pdf'; a.click();
+            a.href = u; a.download = 'merged_0.1cm.pdf'; a.click();
         };
 
         printBtn.onclick = async () => {
@@ -263,7 +243,7 @@
             if (!b) return;
             const u = URL.createObjectURL(b), w = window.open(u);
             if (w) w.onload = () => w.print();
-            else alert('เปิด Pop-up ไม่ได้ โปรดอนุญาตก่อนนะไอคิว');
+            else alert('เปิด Pop-up ไม่ได้นะไอคิว');
         };
     </script>
 </body>
